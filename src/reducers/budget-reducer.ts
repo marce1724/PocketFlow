@@ -1,6 +1,6 @@
 // budget-reducer.ts
 
-import { CategoryBudgets, Category, DraftExpense, Expense } from "../types";
+import { CategoryBudgets, Category, DraftExpense, Expense, Value } from "../types"; // Import Value type
 import { v4 as uuidv4 } from "uuid";
 
 // --- Action Types --- (No changes)
@@ -35,176 +35,164 @@ const defaultState: budgetState = {
     currentCategory: "",
 };
 
-// --- State Initialization --- (No changes)
+// --- State Initialization --- (MODIFIED loadState)
 const loadState = (): budgetState => {
     const localStorageState = localStorage.getItem("budgetState");
     if (localStorageState) {
         try {
+            // JSON.parse returns 'any'
             const parsedState = JSON.parse(localStorageState);
+
+            // Basic validation
             if (
-                parsedState.budget !== undefined &&
+                parsedState !== null && typeof parsedState === 'object' &&
+                typeof parsedState.budget === 'number' &&
                 Array.isArray(parsedState.CategoryBudgets) &&
                 typeof parsedState.modal === 'boolean' &&
                 Array.isArray(parsedState.expenses) &&
                 typeof parsedState.editingId === 'string' &&
                 typeof parsedState.currentCategory === 'string'
             ) {
-                return parsedState as budgetState;
+                // Convert expense date strings back to Date objects
+                // Explicitly type 'expense' parameter in map callback (Option 2)
+                const expensesWithDates = parsedState.expenses.map((expense: {
+                    id: string;
+                    expenseName: string;
+                    amount: number;
+                    category: string;
+                    date: string | null | Date; // Expect date to be string or null from JSON
+                }): Expense => {
+
+                    let convertedDate: Value | null = null; // Use Value type from types.ts
+
+                    if (expense.date && typeof expense.date === 'string') {
+                        const dateObj = new Date(expense.date);
+                        if (!isNaN(dateObj.getTime())) {
+                            convertedDate = dateObj;
+                        } else {
+                            console.warn(`Invalid date string for expense ${expense.id}:`, expense.date);
+                            convertedDate = null;
+                        }
+                    } else if (expense.date === null) {
+                        convertedDate = null;
+                    } else if (expense.date instanceof Date && !isNaN(expense.date.getTime())){
+                        // Handle case where it might somehow already be a valid Date
+                        convertedDate = expense.date;
+                    }
+
+                    // Return a well-typed Expense object
+                    return {
+                        // Use || operators as fallback for potentially missing properties from storage
+                        id: expense.id || uuidv4(),
+                        expenseName: expense.expenseName || "",
+                        // Ensure amount is a number
+                        amount: typeof expense.amount === 'number' ? expense.amount : 0,
+                        category: expense.category || "",
+                        date: convertedDate, // Use the converted Date object or null
+                    };
+                });
+
+                // Return the state with the corrected expenses array
+                return {
+                    budget: parsedState.budget,
+                    CategoryBudgets: parsedState.CategoryBudgets,
+                    modal: parsedState.modal,
+                    editingId: parsedState.editingId,
+                    currentCategory: parsedState.currentCategory,
+                    expenses: expensesWithDates // Use the array with Date objects
+                } as budgetState;
+
             } else {
                 console.warn("Stored state structure is invalid or incomplete. Resetting to default.");
             }
         } catch (e) {
-            console.error("Error parsing state from localStorage. Using default state.", e);
+            console.error("Error parsing state from localStorage or converting dates. Using default state.", e);
         }
     }
     return defaultState;
 };
 export const initialState: budgetState = loadState();
 
-// --- Helper Functions --- (No changes)
+// --- Helper Functions --- (Ensure date is valid Date object or null)
 const createExpense = (draftExpense: DraftExpense): Expense => {
-    return {
-        ...draftExpense,
-        id: uuidv4(),
-    };
+    let dateToSave: Date | null = null;
+     if (draftExpense.date instanceof Date && !isNaN(draftExpense.date.getTime())) { dateToSave = draftExpense.date; }
+     else if (typeof draftExpense.date === 'string') {
+         const parsed = new Date(draftExpense.date);
+         if (!isNaN(parsed.getTime())) { dateToSave = parsed; }
+     }
+     if (!dateToSave) { dateToSave = new Date(); }
+
+    return { ...draftExpense, date: dateToSave, id: uuidv4() };
 };
 
-// --- Reducer Function --- (No changes needed for decimal input)
+// --- Reducer Function ---
 export const budgetReducer = (
     state: budgetState = initialState,
     action: budgetActions
 ): budgetState => {
     switch (action.type) {
         case "add-budget": {
-            const spentPerCategory = state.expenses.reduce((acc, expense) => {
-                if (!acc[expense.category]) {
-                    acc[expense.category] = 0;
-                }
-                // Ensure amounts are numbers before adding
-                const expenseAmount = typeof expense.amount === 'number' ? expense.amount : 0;
-                acc[expense.category] += expenseAmount;
-                return acc;
-            }, {} as Record<string, number>);
-
-            const updatedCategoryBudgets = action.payload.CategoryBudgets.map(categoryBudget => {
-                const spent = spentPerCategory[categoryBudget.id] || 0;
-                // Ensure payload value is a number
-                const allocatedValue = typeof categoryBudget.value === 'number' ? categoryBudget.value : 0;
-                return {
-                    ...categoryBudget,
-                    value: allocatedValue - spent // Calculate remaining
-                };
-            });
-
-            return {
-                ...state,
-                budget: action.payload.budget,
-                CategoryBudgets: updatedCategoryBudgets,
-            };
+            const spentPerCategory = state.expenses.reduce((acc, expense) => { acc[expense.category] = (acc[expense.category] || 0) + (typeof expense.amount === 'number' ? expense.amount : 0); return acc; }, {} as Record<string, number>);
+            const updatedCategoryBudgets = action.payload.CategoryBudgets.map(cb => ({ ...cb, value: (typeof cb.value === 'number' ? cb.value : 0) - (spentPerCategory[cb.id] || 0) }));
+            return { ...state, budget: typeof action.payload.budget === 'number' ? action.payload.budget : 0, CategoryBudgets: updatedCategoryBudgets };
         }
 
-        case "show-modal":
-            return { ...state, modal: true };
-
-        case "close-modal":
-            // Reset editingId when modal closes
-            return { ...state, modal: false, editingId: "" };
+        case "show-modal": return { ...state, modal: true };
+        case "close-modal": return { ...state, modal: false, editingId: "" };
 
         case "add-expense": {
             const expense = createExpense(action.payload.expense);
-             // Ensure amount is a number
             const expenseAmount = typeof expense.amount === 'number' ? expense.amount : 0;
-
-            const updatedCategoryBudgets = state.CategoryBudgets.map((budget) => {
-                if (budget.id === expense.category) {
-                    const currentValue = typeof budget.value === 'number' ? budget.value : 0;
-                    return { ...budget, value: currentValue - expenseAmount };
-                }
-                return budget;
-            });
-            return {
-                ...state,
-                expenses: [...state.expenses, expense],
-                CategoryBudgets: updatedCategoryBudgets,
-                modal: false, // Close modal after adding
-            };
+            const updatedCategoryBudgets = state.CategoryBudgets.map(b => b.id === expense.category ? { ...b, value: (b.value || 0) - expenseAmount } : b);
+            return { ...state, expenses: [...state.expenses, expense], CategoryBudgets: updatedCategoryBudgets, modal: false };
         }
 
         case "remove-expense": {
-            const expenseToRemove = state.expenses.find((expense) => expense.id === action.payload.id);
+            const expenseToRemove = state.expenses.find(ex => ex.id === action.payload.id);
             if (!expenseToRemove) return state;
-             // Ensure amount is a number
             const removedAmount = typeof expenseToRemove.amount === 'number' ? expenseToRemove.amount : 0;
-
-            const updatedCategoryBudgets = state.CategoryBudgets.map((budget) => {
-                if (budget.id === expenseToRemove.category) {
-                    const currentValue = typeof budget.value === 'number' ? budget.value : 0;
-                    return { ...budget, value: currentValue + removedAmount };
-                }
-                return budget;
-            });
-            const updatedExpenses = state.expenses.filter((expense) => expense.id !== action.payload.id);
-
-            return {
-                ...state,
-                expenses: updatedExpenses,
-                CategoryBudgets: updatedCategoryBudgets,
-            };
+            const updatedCategoryBudgets = state.CategoryBudgets.map(b => b.id === expenseToRemove.category ? { ...b, value: (b.value || 0) + removedAmount } : b);
+            const updatedExpenses = state.expenses.filter(ex => ex.id !== action.payload.id);
+            return { ...state, expenses: updatedExpenses, CategoryBudgets: updatedCategoryBudgets };
         }
 
-        case "get-expense-by-id":
-            // Set editingId and open modal
-            return { ...state, editingId: action.payload.id, modal: true };
+        case "get-expense-by-id": return { ...state, editingId: action.payload.id, modal: true };
 
         case "update-expense": {
-            const updatedExpense = action.payload.expense;
-            const originalExpense = state.expenses.find((expense) => expense.id === updatedExpense.id);
+            const updatedExpenseData = action.payload.expense;
+            const originalExpense = state.expenses.find(ex => ex.id === updatedExpenseData.id);
             if (!originalExpense) return state;
 
-             // Ensure amounts are numbers
             const originalAmount = typeof originalExpense.amount === 'number' ? originalExpense.amount : 0;
-            const updatedAmount = typeof updatedExpense.amount === 'number' ? updatedExpense.amount : 0;
+            const updatedAmount = typeof updatedExpenseData.amount === 'number' ? updatedExpenseData.amount : 0;
 
+            let finalDate: Date | null = null;
+            if (updatedExpenseData.date instanceof Date && !isNaN(updatedExpenseData.date.getTime())) { finalDate = updatedExpenseData.date; }
+            else if (typeof updatedExpenseData.date === 'string') {
+                const parsed = new Date(updatedExpenseData.date);
+                if (!isNaN(parsed.getTime())) { finalDate = parsed; }
+            }
+            if (finalDate === null && originalExpense.date instanceof Date && !isNaN(originalExpense.date.getTime())) { finalDate = originalExpense.date; }
 
-            let tempCategoryBudgets = [...state.CategoryBudgets];
-            // Restore original amount
-            tempCategoryBudgets = tempCategoryBudgets.map(budget => {
-                if (budget.id === originalExpense.category) {
-                    const currentValue = typeof budget.value === 'number' ? budget.value : 0;
-                    return { ...budget, value: currentValue + originalAmount };
-                }
-                return budget;
-            });
-            // Deduct updated amount
-            const finalCategoryBudgets = tempCategoryBudgets.map(budget => {
-                if (budget.id === updatedExpense.category) {
-                    const currentValue = typeof budget.value === 'number' ? budget.value : 0;
-                    return { ...budget, value: currentValue - updatedAmount };
-                }
-                return budget;
-            });
+            const updatedExpense = { ...updatedExpenseData, date: finalDate };
 
-            const updatedExpenses = state.expenses.map((expense) =>
-                expense.id === updatedExpense.id ? updatedExpense : expense
-            );
+            let tempCategoryBudgets = state.CategoryBudgets.map(b => b.id === originalExpense.category ? { ...b, value: (b.value || 0) + originalAmount } : b);
+            tempCategoryBudgets = tempCategoryBudgets.map(b => b.id === updatedExpense.category ? { ...b, value: (b.value || 0) - updatedAmount } : b);
+
+            const updatedExpenses = state.expenses.map(ex => ex.id === updatedExpense.id ? updatedExpense : ex);
 
             return {
                 ...state,
                 expenses: updatedExpenses,
-                CategoryBudgets: finalCategoryBudgets,
-                modal: false, // Close modal after update
-                editingId: "", // Clear editing ID
+                CategoryBudgets: tempCategoryBudgets,
+                modal: false,
+                editingId: "",
             };
         }
 
-        case "reset-app":
-            // Return default state, useEffect in App handles localStorage clearing
-            return defaultState;
-
-        case "add-filter-category":
-            return { ...state, currentCategory: action.payload.id };
-
-        default:
-            return state;
+        case "reset-app": return defaultState;
+        case "add-filter-category": return { ...state, currentCategory: action.payload.id };
+        default: return state;
     }
 };

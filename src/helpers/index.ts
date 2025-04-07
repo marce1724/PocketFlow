@@ -13,16 +13,27 @@ export function formatCurrency(amount: number): string {
 // Tu función formatDate (sin cambios, ya usa 'es-ES')
 export function formatDate(dateStr: string): string {
     const dateObj = new Date(dateStr);
+
+    // Check if the date object is valid after parsing
+    if (isNaN(dateObj.getTime())) {
+        console.error("Invalid date string passed to formatDate:", dateStr);
+        return "Invalid Date"; // Return an indicator for invalid dates
+    }
+
+    // Define options for "DD Month" format
     const options: Intl.DateTimeFormatOptions = {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+        day: '2-digit', // e.g., 07, 15
+        month: 'long',  // e.g., April, October
+        // No weekday or year needed
     };
 
-    // Ya está usando 'es-ES', lo cual es correcto para el formato de fecha en español
-    return new Intl.DateTimeFormat('es-ES', options).format(dateObj);
+    // Use an English locale like 'en-GB' or 'en-US'
+    // 'en-GB' often defaults to DD/MM order which feels natural for DD Month
+    return new Intl.DateTimeFormat('en-GB', options).format(dateObj);
+    // You could also use 'en-US', the output for these specific options is usually the same.
 }
+
+
 
 export async function loadFromJSON(): Promise<budgetState> {
     try {
