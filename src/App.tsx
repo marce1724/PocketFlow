@@ -143,6 +143,7 @@ function App() {
           <FilterByCategory />
           <ExpenseList />
           <ExpenseModal />
+
         </main>
       )}
       {/* ================== END MAIN CONTENT AREA ================== */}
