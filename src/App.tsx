@@ -7,9 +7,11 @@ import ExpenseModal from "./components/ExpenseModal";
 import ExpenseList from "./components/ExpenseList";
 import { useBudget } from "./hooks/useBudget";
 import FilterByCategory from "./components/FilterByCategory";
+import { saveAppState } from "./services/firebaseService";
+import { defaultState } from "./reducers/budget-reducer"; // Add this import
 
 function App() {
-  const { state, dispatch } = useBudget();
+  const { state, dispatch, hasLoadedFromFirebase } = useBudget();
   const isValidBudget = useMemo(() => state.budget > 0, [state.budget]);
 
   // --- State for UI elements ---
@@ -18,10 +20,12 @@ function App() {
   const [isUpdatingBudget, setIsUpdatingBudget] = useState(false); // <-- Add state for update mode
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // --- Save state to localStorage --- (no change)
+  // --- Save state to db --- 
   useEffect(() => {
-    localStorage.setItem('budgetState', JSON.stringify(state));
-  }, [state]);
+    if (hasLoadedFromFirebase) {
+      saveAppState(state);
+    }
+  }, [state, hasLoadedFromFirebase]);
 
   // --- Handle clicking outside the dropdown --- (no change)
   useEffect(() => {
@@ -54,10 +58,16 @@ function App() {
     setIsConfirmModalOpen(false);
   };
 
-  const handleResetApp = () => {
+  // const handleResetApp = () => {
+  //   dispatch({ type: "reset-app" });
+  //   setIsConfirmModalOpen(false);
+  //   setIsUpdatingBudget(false); // Ensure update mode is also reset
+  // };
+  const handleResetApp = async () => {
     dispatch({ type: "reset-app" });
+    await saveAppState(defaultState);
     setIsConfirmModalOpen(false);
-    setIsUpdatingBudget(false); // Ensure update mode is also reset
+    setIsUpdatingBudget(false);
   };
 
   // Updated handler for "Update Budget"
@@ -80,8 +90,8 @@ function App() {
          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center">
            <div className="flex-grow text-center">
              <h1 className="uppercase font-black text-4xl text-white inline-block">
-               Budget Planner
-             </h1>
+              Pocket Flow
+            </h1>
            </div>
          </div>
          {isValidBudget && (

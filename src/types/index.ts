@@ -1,6 +1,3 @@
-
-
-
 // Representa un presupuesto individual
 export type CategoryBudgets = {
     id: string;        // Identificador único
@@ -18,15 +15,11 @@ export type Expense = {
     expenseName: string;// Nombre descriptivo del gasto
     amount: number;     // Cantidad gastada
     category: string;   // ID del CategoryBudgets relacionado
-    date: Value;        // Fecha del gasto
+    date: Date;        // Fecha 1 gasto
 };
 
 // Versión preliminar de Expense sin ID
 export type DraftExpense = Omit<Expense, 'id'>;
-
-// Representación del rango de valores para la fecha
-type ValuePiece = Date | null;
-export type Value = ValuePiece | [ValuePiece, ValuePiece];
 
 // Categorías opcionales para UI
 export type Category = {

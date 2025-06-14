@@ -6,9 +6,10 @@ import React, { useContext, useMemo } from 'react';
 import 'tailwindcss/tailwind.css';
 
 // Import Tremor components
-import { Card, BarList, } from '@tremor/react'; // Added Card, Title, BarList, Flex, Text
+import { BarList, } from '@tremor/react'; // Added Card, Title, BarList, Flex, Text
 
 import { BudgetContext } from '../context/BudgetContext';
+import { capitalize } from '../helpers';
 
 // Remove ChartJS registration
 // ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend, ChartDataLabels);
@@ -48,14 +49,11 @@ const BudgetTracker = () => {
   // Optional: Filter out categories with 0 or negative remaining budget if desired
   const barListData = useMemo(() => {
       return CategoryBudgets
-          // .filter(budget => budget.value > 0) // Uncomment to hide empty/negative categories
+          .filter(budget => budget.value > 0) // Uncomment to hide empty/negative categories
           .map(budget => ({
-              name: budget.name.charAt(0).toUpperCase() + budget.name.slice(1), // Capitalize name
-              value: typeof budget.value === 'number' ? budget.value : 0,
-              // Optional: Add icon if available in your CategoryBudgets type
-              // icon: () => <SomeIconComponent name={budget.icon} />
+              name: capitalize(budget.name),
+              value: typeof budget.value === 'number' ? budget.value : 0
           }))
-          // Optional: Sort data for BarList if needed (e.g., highest value first)
           .sort((a, b) => b.value - a.value);
   }, [CategoryBudgets]);
 

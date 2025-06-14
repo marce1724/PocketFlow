@@ -1,5 +1,5 @@
 {
-  "name": "expensestracker",
+  "name": "pocketflow",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -17,7 +17,9 @@
     "chartjs-plugin-datalabels": "^2.2.0",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
+    "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "firebase": "^11.6.0",
     "fs": "^0.0.1-security",
     "prop-types": "^15.8.1",
     "react": "^18.3.1",

@@ -1,45 +1,9 @@
 import { useMemo } from "react";
 import { useBudget } from "../hooks/useBudget";
 import ExpenseDetail from "./ExpenseDetails";
-import { Value } from "../types"; // Assuming Value is Date | null | [Date | null, Date | null]
 
 // Import functions from date-fns
-import { parse, isToday as dateFnsIsToday, isValid as isDateValid } from 'date-fns';
-import { es } from 'date-fns/locale'; // Import Spanish locale
-
-// Helper function to safely parse the date value (string or Date object)
-const getDateObject = (dateValue: Value): Date | null => {
-    // If it's already a valid Date object
-    if (dateValue instanceof Date && isDateValid(dateValue)) {
-        return dateValue;
-    }
-
-    // If it's a string in the expected Spanish format
-    if (typeof dateValue === 'string') {
-        try {
-            // Define the format matching 'viernes, 4 de abril de 2025'
-            // EEEE = Full day name, d = day number, MMMM = Full month name, yyyy = year
-            const formatString = "EEEE, d 'de' MMMM 'de' yyyy";
-            const parsedDate = parse(dateValue, formatString, new Date(), { locale: es });
-
-            if (isDateValid(parsedDate)) {
-                return parsedDate;
-            }
-        } catch (error) {
-            console.error("Error parsing date string:", dateValue, error);
-            return null; // Indicate parsing failure
-        }
-    }
-
-    // Handle array format if necessary (using start date)
-    if (Array.isArray(dateValue) && dateValue[0] instanceof Date && isDateValid(dateValue[0])) {
-        return dateValue[0];
-    }
-
-    // Return null for other invalid types or null/undefined
-    return null;
-};
-
+import { isToday as dateFnsIsToday } from 'date-fns';
 
 export default function ExpenseList() {
     const { state } = useBudget();
@@ -56,8 +20,8 @@ export default function ExpenseList() {
     const sortedExpenses = useMemo(() => {
         // Create a shallow copy before sorting
         return [...filteredExpenses].sort((a, b) => {
-            const dateA = getDateObject(a.date);
-            const dateB = getDateObject(b.date);
+            const dateA = a.date
+            const dateB = b.date
 
             // Handle cases where dates couldn't be parsed (sort them last)
             if (!dateA && !dateB) return 0; // Keep original order if both invalid

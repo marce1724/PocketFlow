@@ -2,6 +2,9 @@
 
 import { budgetState } from "../reducers/budget-reducer";
 
+export const capitalize = (s: string) =>
+    s.length === 0 ? "" : s[0].toUpperCase() + s.slice(1);
+
 // Función actualizada para formatear como Euros (€)
 export function formatCurrency(amount: number): string {
     return new Intl.NumberFormat('de-DE', { // Locale cambiado (ej: Alemania)

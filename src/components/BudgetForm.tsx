@@ -1,5 +1,5 @@
 
-import React, { useState, ChangeEvent, useMemo, FormEvent, useEffect } from "react";
+import { useState, ChangeEvent, useMemo, FormEvent, useEffect } from "react";
 import { useBudget } from "../hooks/useBudget";
 import ErrorMessage from "./ErrorMessage";
 import { CategoryBudgets } from "../types";
@@ -13,22 +13,22 @@ type BudgetFormProps = {
 
 // Define the structure of the local 'budgets' state (both numeric and string)
 type LocalBudgetsState = {
-    insurance: number;
-    rent: number;
-    groceries: number;
-    travel: number;
-    coffee: number;
-    general: number;
-    savings: number;
-    restaurant: number;
+    Insurance: number;
+    Rent: number;
+    Groceries: number;
+    Travel: number;
+    Café: number;
+    General: number;
+    Savings: number;
+    Dining: number;
 };
 // Type for the string input state
 type LocalBudgetsInputState = Record<keyof LocalBudgetsState, string>;
 
 // Default values for the numeric state
 const defaultLocalBudgets: LocalBudgetsState = {
-    insurance: 0, rent: 0, groceries: 0, travel: 0,
-    coffee: 0, general: 0, savings: 0, restaurant: 0,
+    Insurance: 0, Rent: 0, Groceries: 0, Travel: 0,
+    Café: 0, General: 0, Savings: 0, Dining: 0,
 };
 
 // Helper to create default string state from numeric defaults
@@ -210,7 +210,7 @@ export default function BudgetForm({ onBudgetSet, currentBudget, currentCategory
                         inputMode="decimal" // Hint for keyboard
                         className="bg-white border border-gray-300 p-2 rounded-lg w-full focus:ring-blue-500 focus:border-blue-500"
                         placeholder="0.00"
-                        value={budgetInput} // Bind to string state
+                        value={budgetInput === "0" ? "" : budgetInput} // Bind to string state
                         onChange={handleChange}
                     />
                 </div>
@@ -240,7 +240,7 @@ export default function BudgetForm({ onBudgetSet, currentBudget, currentCategory
                             inputMode="decimal" // Hint for keyboard
                             className="bg-white border border-gray-300 p-2 rounded-lg w-full focus:ring-blue-500 focus:border-blue-500"
                             placeholder="0.00"
-                            value={budgetsInput[key]} // Bind to the specific key in string state
+                            value={budgetsInput[key] === "0" ? "" : budgetsInput[key]} // Bind to the specific key in string state
                             onChange={handleBudgetsChange}
                         />
                     </div>

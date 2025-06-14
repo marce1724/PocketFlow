@@ -1,15 +1,17 @@
 
 
-import { ChangeEvent, useMemo } from "react";
+import { useMemo } from "react";
 // Remove the static import: import { categories } from "../data/categories";
 import { useBudget } from "../hooks/useBudget";
+import { Select, SelectItem } from "@tremor/react";
+import { capitalize } from "../helpers";
 
 export default function FilterByCategory() {
   // Get both state and dispatch from the hook
   const { state, dispatch } = useBudget();
 
-  const handleChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    dispatch({ type: "add-filter-category", payload: { id: e.target.value } });
+  const handleChange = (value: string) => {
+    dispatch({ type: "add-filter-category", payload: { id: value } });
   };
 
   // Use the categories defined in the budget state for filtering options
@@ -28,26 +30,23 @@ export default function FilterByCategory() {
       {showFilter ? (
         <form>
           <div className="flex flex-col md:flex-row md:items-center gap-5">
-            <label htmlFor="category-filter" className="md:w-1/4"> {/* Adjusted label width */}
+            <label htmlFor="category-filter" className="md:w-1/4">
               Filter Expenses:
             </label>
-            <select
-              id="category-filter" // Use a unique ID if 'category' is used elsewhere
-              className="bg-slate-100 p-3 flex-1 rounded"
-              onChange={handleChange}
-              // Control the component: Set value to the current filter in the state
-              value={state.currentCategory}
-            >
-              {/* Option to show all expenses */}
-              <option value="">-- Show All --</option>
 
-              {/* Map over the categories from the budget state */}
+            <Select
+              id="category-filter"
+              value={state.currentCategory}
+              onValueChange={handleChange} // Same handler as before
+              className="flex-1 p-3 rounded"
+            >
+              <SelectItem value="">-- Show All --</SelectItem>
               {availableFilterCategories.map((category) => (
-                <option value={category.id} key={category.id}>
-                  {category.name}
-                </option>
+                <SelectItem key={category.id} value={category.id}>
+                  {capitalize(category.name)}
+                </SelectItem>
               ))}
-            </select>
+            </Select>
           </div>
         </form>
       ) : (
